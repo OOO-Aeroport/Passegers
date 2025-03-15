@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Passenger Management</title>
+    <style>
+        body {
+            background-color: #f0f0f0;
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        .top-section, .bottom-section {
+            flex: 1;
+            padding: 20px;
+            border-bottom: 2px solid #ccc;
+        }
+        .bottom-section {
+            position: relative;
+            background-color: rgba(200, 200, 200, 0.5);
+        }
+        .bottom-section.active {
+            background-color: transparent;
+        }
+        .toggle-button {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 9999;
+            width: 50px;
+            height: 50px;
+            background-color: white;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            transition: transform 0.3s ease, background-color 0.3s ease;
+        }
+        .toggle-button.active {
+            transform: rotate(180deg);
+            background-color: royalblue;
+        }
+        .header {
+            position: relative;
+            margin-top: 60px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .stats {
+            background-color: white;
+            padding: 10px;
+            border-radius: 5px;
+            display: none;
+            position: absolute;
+            left: 500px;
+            top: 0;
+            opacity: 1;
+            transition: opacity 0.5s ease;
+        }
+        .stats.hidden {
+            opacity: 0;
+        }
+        .bottom-section.active .stats {
+            display: block;
+        }
+        input[type="number"], select {
+            padding: 5px;
+            margin: 5px 0;
+            box-sizing: border-box;
+        }
+        .confirm-button {
+            background-color: white;
+            color: black;
+            border: 2px solid #ccc;
+            border-radius: 25px;
+            padding: 10px 20px;
+            cursor: pointer;
+            transition: background-color 0.3s ease, color 0.3s ease;
+            font-size: 16px;
+        }
+        .confirm-button:hover {
+            background-color: royalblue;
+            color: white;
+            border-color: royalblue;
+        }
+        .disabled-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(200, 200, 200, 0.5);
+            z-index: 1;
+        }
+        .bottom-section.active .disabled-overlay {
+            display: none;
+        }
+        .message {
+            min-height: 30px;
+            margin-top: 10px;
+            opacity: 1;
+            transition: opacity 0.5s ease;
+        }
+        .message.hidden {
+            opacity: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="top-section">
+            <h1>Создание пассажиров</h1>
+            <form id="create-passengers-form">
+                <label for="num_passengers">Количество пассажиров:</label>
+                <br>
+                <input type="number" id="num_passengers" name="num_passengers" required min="1">
+                <br>
+                <br>
+                <label for="behavior">Поведение:</label>
+                <br>
+                <select id="behavior" name="behavior" required>
+                    <option value="Обычный">Обычный</option>
+                    <option value="Продажа">Продажа</option>
+                    <option value="Мошенник касса">Мошенник касса</option>
+                    <option value="Мошенник регистрация">Мошенник регистрация</option>
+                    <option value="Опоздавший касса">Опоздавший касса</option>
+                    <option value="Опоздавший регистрация">Опоздавший регистрация</option>
+                    <option value="Случайно">Случайно</option>
+                </select>
+                <br>
+                <br>
+                <label for="baggage_weight">Вес багажа:</label>
+                <br>
+                <input type="number" id="baggage_weight" name="baggage_weight" placeholder="Случайно">
+                <br>
+                <br>
+                <button type="submit" class="confirm-button">Подтвердить</button>
+            </form>
+            <p id="message" class="message"></p>
+        </div>
+
+        <div class="bottom-section" id="bottom-section">
+            <div class="disabled-overlay"></div>
+            <button class="toggle-button" id="toggle-button"></button>
+            <div class="header">
+                <h1>Автоматическая генерация</h1>
+                <div class="stats" id="stats">
+                    <p>Число генераций: <span id="generation-count">0</span></p>
+                    <p>Интервал: <span id="generation-interval">0</span> сек</p>
+                </div>
+            </div>
+            <form id="auto-generation-form">
+                <label for="auto_num_passengers">Количество пассажиров:</label>
+                <br>
+                <input type="number" id="auto_num_passengers" name="auto_num_passengers" required min="1">
+                <br>
+                <br>
+                <label for="auto_interval">Интервал генерации (секунды):</label>
+                <br>
+                <input type="number" id="auto_interval" name="auto_interval" required min="1">
+                <br>
+                <br>
+                <label for="auto_behavior">Поведение:</label>
+                <br>
+                <select id="auto_behavior" name="auto_behavior" required>
+                    <option value="Обычный">Обычный</option>
+                    <option value="Продажа">Продажа</option>
+                    <option value="Мошенник касса">Мошенник касса</option>
+                    <option value="Мошенник регистрация">Мошенник регистрация</option>
+                    <option value="Опоздавший касса">Опоздавший касса</option>
+                    <option value="Опоздавший регистрация">Опоздавший регистрация</option>
+                    <option value="Случайно">Случайно</option>
+                </select>
+                <br>
+                <br>
+                <label for="auto_baggage_weight">Вес багажа:</label>
+                <br>
+                <input type="number" id="auto_baggage_weight" name="auto_baggage_weight" placeholder="Случайно">
+                <br>
+                <br>
+                <button type="submit" class="confirm-button">Подтвердить</button>
+            </form>
+            <p id="auto-message" class="message"></p>
+        </div>
+    </div>
+
+    <script>
+        let autoGenerationInterval = null;
+
+        document.getElementById('create-passengers-form').addEventListener('submit', function(event) {
+            event.preventDefault();
+            const formData = new FormData(event.target);
+            const data = {
+                num_passengers: formData.get('num_passengers'),
+                behavior: formData.get('behavior'),
+                baggage_weight: formData.get('baggage_weight') === 'Случайно' ? 'Случайно' : parseInt(formData.get('baggage_weight'))
+            };
+
+            const messageElement = document.getElementById('message');
+            messageElement.classList.add('hidden');
+
+            setTimeout(() => {
+                fetch('/create_passengers', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    messageElement.textContent = data.message || data.error;
+                    messageElement.classList.remove('hidden');
+                });
+            }, 1000);
+        });
+
+        document.getElementById('auto-generation-form').addEventListener('submit', function(event) {
+            event.preventDefault();
+            const formData = new FormData(event.target);
+            const data = {
+                num_passengers: formData.get('auto_num_passengers'),
+                interval: formData.get('auto_interval'),
+                behavior: formData.get('auto_behavior'),
+                baggage_weight: formData.get('auto_baggage_weight') === 'Случайно' ? 'Случайно' : parseInt(formData.get('auto_baggage_weight'))
+            };
+
+            const autoMessageElement = document.getElementById('auto-message');
+            autoMessageElement.classList.add('hidden');
+
+            setTimeout(() => {
+                fetch('/start_auto_generation', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    autoMessageElement.textContent = data.message || data.error;
+                    autoMessageElement.classList.remove('hidden');
+
+                    document.getElementById('generation-count').textContent = data.num_passengers;
+                    document.getElementById('generation-interval').textContent = data.interval;
+                    document.getElementById('generation-behavior').textContent = data.behavior;
+                    document.getElementById('generation-baggage').textContent = data.baggage_weight;
+
+                    const statsElement = document.getElementById('stats');
+                    statsElement.classList.remove('hidden');
+                });
+            }, 1000);
+        });
+
+        const toggleButton = document.getElementById('toggle-button');
+        const bottomSection = document.getElementById('bottom-section');
+        const disabledOverlay = document.querySelector('.disabled-overlay');
+
+        toggleButton.addEventListener('click', function() {
+            bottomSection.classList.toggle('active');
+            toggleButton.classList.toggle('active');
+            disabledOverlay.style.display = bottomSection.classList.contains('active') ? 'none' : 'block';
+
+            if (bottomSection.classList.contains('active')) {
+                const statsElement = document.getElementById('stats');
+                if (statsElement.textContent.includes('Число генераций')) {
+                    statsElement.classList.remove('hidden');
+                }
+            } else {
+                fetch('/stop_auto_generation', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    const statsElement = document.getElementById('stats');
+                    const autoMessageElement = document.getElementById('auto-message');
+                    statsElement.classList.add('hidden');
+                    autoMessageElement.classList.add('hidden');
+
+                    document.getElementById('generation-count').textContent = '0';
+                    document.getElementById('generation-interval').textContent = '0';
+                });
+            }
+        });
+
+        function alignInputWidths() {
+            const inputs = document.querySelectorAll('input[type="number"], select');
+            let maxWidth = 0;
+
+            inputs.forEach(input => {
+                input.style.width = 'auto';
+                if (input.offsetWidth > maxWidth) {
+                    maxWidth = input.offsetWidth;
+                }
+            });
+
+            inputs.forEach(input => {
+                input.style.width = `${maxWidth}px`;
+            });
+        }
+
+        window.addEventListener('load', alignInputWidths);
+        window.addEventListener('resize', alignInputWidths);
+    </script>
+</body>
+</html>
