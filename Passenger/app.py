@@ -6,10 +6,382 @@ import time
 import logging
 import requests
 from datetime import datetime, timedelta
-
-# from LeaveMe import for_auto_create_passengers
+from flask_swagger_ui import get_swaggerui_blueprint
 
 app = Flask(__name__)
+
+# Доступ к Swagger.
+swaggerui_blueprint = get_swaggerui_blueprint('/api/docs', '/static/swagger.json', config={'app_name': "Airport Passenger Simulation API"}) # noqa
+app.register_blueprint(swaggerui_blueprint, url_prefix='/api/docs')
+
+# Описание API.
+@app.route('/static/swagger.json')
+def swagger():
+    swagger_doc = {
+        "openapi": "3.0.0",
+        "info": {
+            "title": "Module 'Passengers' API",
+            "version": "1.0.0",
+            "description": "API для симуляции поведения пассажиров в аэропорту."
+        },
+        "paths": {
+            "/create_passengers": {
+                "post": {
+                    "summary": "Создание пассажиров",
+                    "description": "Создает указанное количество пассажиров с заданным поведением и весом багажа.",
+                    "requestBody": {
+                        "required": True,
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "num_passengers": {
+                                            "type": "integer",
+                                            "description": "Количество пассажиров для создания"
+                                        },
+                                        "behavior": {
+                                            "type": "string",
+                                            "description": "Тип поведения пассажиров"
+                                        },
+                                        "baggage_weight": {
+                                            "type": "integer",
+                                            "description": "Вес багажа"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "responses": {
+                        "200": {
+                            "description": "Пассажиры успешно созданы."
+                        },
+                        "400": {
+                            "description": "Один из параметров не был заполнен."
+                        },
+                        "500": {
+                            "description": "Ошибка сервера при создании пассажиров."
+                        }
+                    }
+                }
+            },
+            "/start_auto_generation": {
+                "post": {
+                    "summary": "Запуск авто-генерации пассажиров",
+                    "description": "Запускает автоматическую генерацию пассажиров с заданными параметрами.",
+                    "requestBody": {
+                        "required": True,
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "num_passengers": {
+                                            "type": "integer",
+                                            "description": "Количество пассажиров для генерации"
+                                        },
+                                        "interval": {
+                                            "type": "integer",
+                                            "description": "Интервал генерации пассажиров в секундах"
+                                        },
+                                        "behavior": {
+                                            "type": "string",
+                                            "description": "Тип поведения пассажиров"
+                                        },
+                                        "baggage_weight": {
+                                            "type": "integer",
+                                            "description": "Вес багажа"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "responses": {
+                        "200": {
+                            "description": "Авто-генерация успешно запущена."
+                        },
+                        "400": {
+                            "description": "Один из параметров не был заполнен."
+                        }
+                    }
+                }
+            },
+            "/stop_auto_generation": {
+                "post": {
+                    "summary": "Остановка авто-генерации пассажиров",
+                    "description": "Останавливает автоматическую генерацию пассажиров.",
+                    "responses": {
+                        "200": {
+                            "description": "Авто-генерация успешно остановлена."
+                        }
+                    }
+                }
+            },
+            "/passenger/available-flight": {
+                "post": {
+                    "summary": "Добавление нового рейса",
+                    "description": "Добавляет новый рейс для покупки билетов.",
+                    "requestBody": {
+                        "required": True,
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "flightId": {
+                                            "type": "integer",
+                                            "description": "ID рейса"
+                                        },
+                                        "airplaneId": {
+                                            "type": "integer",
+                                            "description": "ID самолета"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "responses": {
+                        "200": {
+                            "description": "Рейс успешно добавлен."
+                        },
+                        "500": {
+                            "description": "Ошибка сервера при добавлении рейса."
+                        }
+                    }
+                }
+            },
+            "/passenger/check-in/start/{flightId}": {
+                "post": {
+                    "summary": "Начало регистрации на рейс",
+                    "description": "Уведомляет о начале регистрации на указанный рейс.",
+                    "parameters": [
+                        {
+                            "name": "flightId",
+                            "in": "path",
+                            "required": True,
+                            "schema": {
+                                "type": "integer"
+                            }
+                        }
+                    ],
+                    "requestBody": {
+                        "required": True,
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "check_in_end_time": {
+                                            "type": "string",
+                                            "description": "Время окончания регистрации"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "responses": {
+                        "200": {
+                            "description": "Регистрация успешно начата."
+                        },
+                        "500": {
+                            "description": "Ошибка сервера при начале регистрации."
+                        }
+                    }
+                }
+            },
+            "/passenger/check-in/end/{flightId}": {
+                "post": {
+                    "summary": "Завершение регистрации на рейс",
+                    "description": "Уведомляет об окончании регистрации на указанный рейс.",
+                    "parameters": [
+                        {
+                            "name": "flightId",
+                            "in": "path",
+                            "required": True,
+                            "schema": {
+                                "type": "integer"
+                            }
+                        }
+                    ],
+                    "responses": {
+                        "200": {
+                            "description": "Регистрация успешно завершена."
+                        },
+                        "500": {
+                            "description": "Ошибка сервера при завершении регистрации."
+                        }
+                    }
+                }
+            },
+            "/passenger/ticket": {
+                "post": {
+                    "summary": "Покупка билета",
+                    "description": "Обрабатывает покупку билета пассажиром.",
+                    "requestBody": {
+                        "required": True,
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "PassengerId": {
+                                            "type": "integer",
+                                            "description": "ID пассажира"
+                                        },
+                                        "Status": {
+                                            "type": "string",
+                                            "description": "Статус покупки билета"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "responses": {
+                        "200": {
+                            "description": "Покупка билета успешно обработана."
+                        },
+                        "500": {
+                            "description": "Ошибка сервера при покупке билета."
+                        }
+                    }
+                }
+            },
+            "/passenger/return-ticket": {
+                "post": {
+                    "summary": "Возврат билета",
+                    "description": "Обрабатывает возврат билета пассажиром.",
+                    "requestBody": {
+                        "required": True,
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "PassengerId": {
+                                            "type": "integer",
+                                            "description": "ID пассажира"
+                                        },
+                                        "Status": {
+                                            "type": "string",
+                                            "description": "Статус возврата билета"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "responses": {
+                        "200": {
+                            "description": "Возврат билета успешно обработан."
+                        },
+                        "500": {
+                            "description": "Ошибка сервера при возврате билета."
+                        }
+                    }
+                }
+            },
+            "/passenger/check-in": {
+                "post": {
+                    "summary": "Регистрация пассажира",
+                    "description": "Обрабатывает регистрацию пассажира на рейс.",
+                    "requestBody": {
+                        "required": True,
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "PassengerId": {
+                                            "type": "integer",
+                                            "description": "ID пассажира"
+                                        },
+                                        "Status": {
+                                            "type": "string",
+                                            "description": "Статус регистрации"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "responses": {
+                        "200": {
+                            "description": "Регистрация успешно обработана."
+                        },
+                        "500": {
+                            "description": "Ошибка сервера при регистрации."
+                        }
+                    }
+                }
+            },
+            "/passenger/transporting": {
+                "post": {
+                    "summary": "Транспортировка пассажиров",
+                    "description": "Обрабатывает транспортировку пассажиров к самолету.",
+                    "requestBody": {
+                        "required": True,
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "passenger_id": {
+                                            "type": "integer",
+                                            "description": "ID пассажира"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "responses": {
+                        "200": {
+                            "description": "Транспортировка успешно обработана."
+                        },
+                        "500": {
+                            "description": "Ошибка сервера при транспортировке."
+                        }
+                    }
+                }
+            },
+            "/passenger/on-board": {
+                "post": {
+                    "summary": "Посадка пассажиров на борт",
+                    "description": "Обрабатывает посадку пассажиров на борт самолета.",
+                    "requestBody": {
+                        "required": True,
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "passenger_id": {
+                                            "type": "integer",
+                                            "description": "ID пассажира"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "responses": {
+                        "200": {
+                            "description": "Посадка успешно обработана."
+                        },
+                        "500": {
+                            "description": "Ошибка сервера при посадке."
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return jsonify(swagger_doc)
 
 # Логирование действий пассажиров.
 passenger_logger = logging.getLogger('passenger_actions')
@@ -185,7 +557,7 @@ def update_passenger_status(status, passenger_group, model_time):
             conn.close()
 
     elif status == "Покупка билета":
-        ticket_data = [
+        ticket_data = [ # noqa
             {
                 "passenger_id": passenger[0],
                 "flight_id": passenger[2],
@@ -199,10 +571,11 @@ def update_passenger_status(status, passenger_group, model_time):
             print(f"{time.strftime("%H:%M:%S", time.localtime())} - Модуль 'Касса' недоступен для покупки билетов.")
 
     elif status == "Возврат билета":
-        return_data = [
+        return_data = [ # noqa
             {
                 "passenger_id": passenger[0],
-                "flight_id": passenger[2]
+                "flight_id": passenger[2],
+                "baggage_quantity": passenger[3]
             }
             for passenger in passenger_group
         ]
@@ -326,8 +699,6 @@ def manipulate_time(time_str, operator, minutes):
 
 # Обработка времени действия.
 threading.Thread(target=action_time_thread, daemon=True).start()
-# threading.Thread(target=for_auto_create_passengers, daemon=True).start()
-
 
 @app.route('/')
 def index():
@@ -548,7 +919,6 @@ def buy_ticket():
 
                 c.execute("UPDATE passengers SET status = ?, action_time = ? WHERE id = ?",
                           (new_status, model_time, passenger_id))
-
             elif status == 'Unsuccessful':
                 c.execute("SELECT EXISTS (SELECT 1 FROM flights WHERE is_check_in = '0');")
                 result = c.fetchone()[0]
@@ -611,7 +981,7 @@ def return_ticket():
 
             c.execute("UPDATE passengers SET status = ? where id = ?",
                       (new_status, passenger_id))
-            passenger_logger.info(f"Пассажир {passenger_id} изменил свой статус с 'Возврат билета' на '{status}'.")
+            passenger_logger.info(f"Пассажир {passenger_id} изменил свой статус с 'Возврат билета' на '{new_status}'.")
             conn.commit()
         except Exception as e:
             conn.rollback()
@@ -667,7 +1037,7 @@ def check_in():
 def transporting():
     data = request.json
     passengers = [item['passenger_id'] for item in data]
-    
+
     conn = sqlite3.connect('passengers.db')
     c = conn.cursor()
 
@@ -698,7 +1068,7 @@ def on_board():
         conn = sqlite3.connect('passengers.db')
         c = conn.cursor()
         try:
-            passenger_id = info.get("passengerId")
+            passenger_id = info.get("passenger_id")
             c.execute("UPDATE passengers SET status = ? WHERE id = ?",
                       ("На борту", passenger_id))
             passenger_logger.info(f"Пассажир {passenger_id} изменил свой статус с 'Транспортировка' на 'На борту'.")
