@@ -314,19 +314,38 @@ def swagger():
                     }
                 }
             },
-
-            # Секция: Взаимодействие с табло
-            "/table/flights": {
-                "get": {
+            "/passenger/available-flight": {
+                "post": {
                     "tags": ["Взаимодействие с табло"],
-                    "summary": "Получение списка рейсов",
-                    "description": "Возвращает список всех доступных рейсов.",
+                    "summary": "Добавление нового рейса",
+                    "description": "Добавляет новый рейс в базу данных, делая его доступным для покупки билетов.",
+                    "parameters": [
+                        {
+                            "name": "body",
+                            "in": "body",
+                            "required": True,
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "flightId": {
+                                        "type": "string",
+                                        "description": "Идентификатор рейса."
+                                    },
+                                    "airplaneId": {
+                                        "type": "string",
+                                        "description": "Идентификатор самолета."
+                                    }
+                                },
+                                "required": ["flightId", "airplaneId"]
+                            }
+                        }
+                    ],
                     "responses": {
                         "200": {
-                            "description": "Список рейсов успешно получен."
+                            "description": "Рейс успешно добавлен и доступен для покупки билетов."
                         },
                         "500": {
-                            "description": "Ошибка сервера при получении списка рейсов."
+                            "description": "Ошибка сервера при добавлении рейса."
                         }
                     }
                 }
